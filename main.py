@@ -1,33 +1,42 @@
-from random import randint
+from random import randint, choices
 from itertools import groupby
-from math import floor
+from math import floor, ceil
 
-# define variables
-n_pop = 50
-MAX_N_GEN = 10000
-best_answers = 0.3
-mutation_rate = 0.1
-alpha = 0.5
-number_of_sections = 3
-number_of_shifts = 3
-number_of_nurses = 9
-number_of_work_days = 7
-nurses = [1, 2, 3, 4, 5, 6, 7, 8, 9]
-number_of_genes = number_of_shifts * number_of_work_days
-days = {1: "Saturday", 2: "Sunday", 3: "Monday", 4: "Tuesday", 5: "Wednesday", 6: "Thursday", 7: "Friday"}
-nurses_associated_with_sections = {1: 1, 2: 1, 3: 1, 4: 2, 5: 2, 6: 2, 7: 3, 8: 3, 9: 3}
-sections_nurses = {key: sum(x == key for x in nurses_associated_with_sections.values()) for key in range(1, number_of_sections + 1)}
-population = [[randint(1, number_of_nurses) for _ in range(number_of_sections * number_of_genes)] for _ in range(n_pop)]
+# Define variables
+NUMBER_OF_POPULATION = 50
+MAX_NUMBER_GENERATION = 10000
+MUTATION_RATE = 0.01
+ALPHA = 0.5
+NUMBER_OF_SECTIONS = 3
+NUMBER_OF_SHIFTS = 3
+NUMBER_OF_NURSES = 9
+NUMBER_OF_WORK_DAYS = 7
+NUMBER_OF_GENES = NUMBER_OF_SHIFTS * NUMBER_OF_WORK_DAYS * NUMBER_OF_SECTIONS
+SELECTION_PART = (NUMBER_OF_GENES - 1) // 2 + 20
+NURSES = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+DAYS = {1: "Saturday", 2: "Sunday", 3: "Monday", 4: "Tuesday", 5: "Wednesday", 6: "Thursday", 7: "Friday"}
+NURSE_TO_SECTION = {1: 1, 2: 1, 3: 1, 4: 2, 5: 2, 6: 2, 7: 3, 8: 3, 9: 3}
+SECTION_TO_NUMBER_OF_NURSES = {key: sum(x == key for x in NURSE_TO_SECTION.values()) for key in range(1, NUMBER_OF_SECTIONS + 1)}
+
+# Create population
+population = []
+for i in range(NUMBER_OF_POPULATION):
+    last_n_id = 1
+    population.append([])
+    for se in range(1, NUMBER_OF_SECTIONS+1):
+        population[i].extend(choices(range(last_n_id, SECTION_TO_NUMBER_OF_NURSES.get(se) + last_n_id),
+                k=NUMBER_OF_SHIFTS * NUMBER_OF_WORK_DAYS))
+        last_n_id += SECTION_TO_NUMBER_OF_NURSES.get(se)
 
 
 def map_chromosome_to_human_readable_text(chromosome: list) -> None:
-    sections = chunk_it(chromosome, number_of_sections)
+    sections = chunk_it(chromosome, NUMBER_OF_SECTIONS)
     for idx, sec in enumerate(sections, start=1):
         print(f"---------------section {idx}--------------------")
-        for i in range(1, number_of_work_days+1):
-            sub_sec = chunk_it(sec, number_of_work_days)
-            print(f"{days.get(i)}: ", end="")
-            for j in range(number_of_shifts):
+        for i in range(1, NUMBER_OF_WORK_DAYS+1):
+            sub_sec = chunk_it(sec, NUMBER_OF_WORK_DAYS)
+            print(f"{DAYS.get(i)}: ", end="")
+            for j in range(NUMBER_OF_SHIFTS):
                 print(f"{sub_sec[i-1][j]}", end=" ")
             print()
 
@@ -46,17 +55,18 @@ def chunk_it(seq: list, num: int) -> list:
 
 def fitness(x: list) -> float:
     score = 0
-    sections = chunk_it(x, number_of_sections)
-    if not set(nurses).issubset(x):  # is all nurses in chromosome?
-        score += len(set(nurses).difference(x))
+    sections = chunk_it(x, NUMBER_OF_SECTIONS)
+    if not set(NURSES).issubset(x):  # Is all nurses in chromosome?
+        score += len(set(NURSES).difference(x))
     for idx, sec in enumerate(sections, start=1):
         for i in range(len(sec)):
             nurse = sec[i]
-            if nurses_associated_with_sections.get(nurse) != idx:  # is nurse is in correct section?
+            if NURSE_TO_SECTION.get(nurse) != idx:  # Is nurse is in correct section?
                 score += 5
-            if i != len(sec)-1 and sec[i] == sec[i+1]:  # check there is duplicated continuous nurse in section?
+            if i != len(sec)-1 and sec[i] == sec[i+1]:  # Check there is duplicated continuous nurse in section?
                 score += 5
     print(f"fitness is: {score}")
+
     return score
 
 
@@ -65,17 +75,17 @@ def check_constraints(x: list) -> int:
     best_index = -1
     for index, parent in enumerate(x):
         flag = False
-        if set(nurses).issubset(parent):  # all nurses is in chromosome?
-            if len([k for k, g in groupby(parent) if sum(1 for _ in g) > 1]) == 0:  # check there is duplicated continuous nurse in parent?
-                sections = chunk_it(parent, number_of_sections)
+        if set(NURSES).issubset(parent):  # All nurses is in chromosome?
+            if len([k for k, g in groupby(parent) if sum(1 for _ in g) > 1]) == 0:  # Check there is duplicated continuous nurse in parent?
+                sections = chunk_it(parent, NUMBER_OF_SECTIONS)
                 last_nurse_id = 1
                 for idx, sec in enumerate(sections, start=1):
-                    if len(set(sec).difference(list(range(last_nurse_id, sections_nurses.get(idx) + last_nurse_id)))) == 0:  # check all nurses in section {idx} is correct nurses that should be in this section?
+                    if len(set(sec).difference(list(range(last_nurse_id, SECTION_TO_NUMBER_OF_NURSES.get(idx) + last_nurse_id)))) == 0:  # Check all nurses in section {idx} is correct nurses that should be in this section?
                         flag = True
                     else:
                         flag = False
                         break
-                    last_nurse_id += sections_nurses.get(idx)
+                    last_nurse_id += SECTION_TO_NUMBER_OF_NURSES.get(idx)
                 if flag:
                     good_parents_idx.append(index)
 
@@ -88,54 +98,63 @@ def check_constraints(x: list) -> int:
                 best_index = index
     elif len(good_parents_idx) == 1:
         best_index = good_parents_idx[0]
+
     return best_index
 
 
-for i in range(MAX_N_GEN):
-    print(f"Gen {i+1}")
-    if (ans := check_constraints(population)) != -1:
-        map_chromosome_to_human_readable_text(population[ans])
-        exit(0)
+best_fitness_so_far = 0
+for i in range(MAX_NUMBER_GENERATION):
+    # Calculate fitness value
     pop_fitness = {}
-    for j in range(n_pop):
+    for j in range(NUMBER_OF_POPULATION):
         pop_fitness[j] = fitness(population[j])
 
-    # select
-    best_fitness = sorted(pop_fitness, key=pop_fitness.get, reverse=True)[-n_pop//2:]
+    # Select
+    best_fitness = sorted(pop_fitness, key=pop_fitness.get, reverse=True)[-NUMBER_OF_POPULATION // 2:]
+    best_fitness_so_far = best_fitness[-1]
 
+    # Crossover
     childs = []
-    for idx1, idx2 in zip(best_fitness[0::2], best_fitness[1::2]):
-        childs.append(population[idx1][:(len(population[idx1]) - 1) // 2 + 10])
-        childs.append(population[idx2][:(len(population[idx2]) - 1) // 2 + 10])
-        t = [floor(alpha * (population[idx1][i] + population[idx2][i])) for i in range((len(population[idx1]) - 1) // 2 + 10, len(population[idx1]))]
-        childs[len(childs) - 2] += t
+    for index, (idx1, idx2) in enumerate(zip(best_fitness[0::2], best_fitness[1::2]), start=1):
+        if index % 2 == 0:
+            childs.append(population[idx1][:SELECTION_PART])
+            childs.append(population[idx2][:SELECTION_PART])
+            t = [floor(ALPHA * (population[idx1][i] + population[idx2][i])) for i in range(SELECTION_PART, NUMBER_OF_GENES)]
+            childs[len(childs) - 2] += t
+            childs[len(childs) - 1] += t
+        else:
+            y = NUMBER_OF_GENES - SELECTION_PART
+            childs.append(population[idx1][y:])
+            childs.append(population[idx2][y:])
+            t = [floor(ALPHA * (population[idx1][i] + population[idx2][i])) for i in range(0, y)]
+            childs[len(childs) - 2] += t
+            childs[len(childs) - 1] += t
+
+    # If number of parents is even number must add last parent separately
+    if NUMBER_OF_POPULATION % 2 == 0:
+        childs.append(population[best_fitness[-1]][:SELECTION_PART])
+        t = [floor(ALPHA * (population[best_fitness[-1]][i] + population[best_fitness[0]][i])) for i in range(SELECTION_PART, NUMBER_OF_GENES)]
         childs[len(childs) - 1] += t
 
-    # last parent add
-    if n_pop % 2 == 0:
-        childs.append(population[best_fitness[-1]][:(len(population[best_fitness[-1]]) - 1) // 2 + 10])
-        t = [floor(alpha * (population[best_fitness[-1]][i] + population[best_fitness[0]][i])) for i in range((len(population[best_fitness[-1]]) - 1) // 2 + 10, len(population[best_fitness[-1]]))]
-        childs[len(childs) - 1] += t
-
+    # Replace parents with low fitness value with new children's
     not_chosen_parents = list(set(pop_fitness.keys()).difference(best_fitness))
     for p in not_chosen_parents:
         population[p] = childs.pop()
 
+    # Mutation
+    for _ in range(ceil(MUTATION_RATE * NUMBER_OF_POPULATION)):
+        rand_pop_idx1 = randint(0, NUMBER_OF_POPULATION - 1)
+        rand_pop_idx2 = randint(0, NUMBER_OF_POPULATION - 1)
+        rand_gene_idx1 = randint(0, NUMBER_OF_GENES - 1)
+        rand_gene_idx2 = randint(0, NUMBER_OF_GENES - 1)
+        population[rand_pop_idx1][rand_gene_idx1], population[rand_pop_idx2][rand_gene_idx2] = population[rand_pop_idx2][rand_gene_idx2], population[rand_pop_idx1][rand_gene_idx1]
 
-    # mutation
-    rand_pop_idx1 = randint(0, n_pop - 1)
-    rand_pop_idx2 = randint(0, n_pop - 1)
-    rand_gene_idx1 = randint(0, (number_of_genes*number_of_sections) - 1)
-    rand_gene_idx2 = randint(0, (number_of_genes*number_of_sections) - 1)
-    population[rand_pop_idx1][rand_gene_idx1], population[rand_pop_idx2][rand_gene_idx2] = population[rand_pop_idx2][rand_gene_idx2], population[rand_pop_idx1][rand_gene_idx1]
+    # Is termination criteria satisfied?
+    print(f"Gen {i+1}")
+    if (ans := check_constraints(population)) != -1:
+        map_chromosome_to_human_readable_text(population[ans])
+        exit(0)
 
-mx = 0
-ind = 0
-for j in range(n_pop):
-    x = fitness(population[j])
-    if x > mx:
-        mx = x
-        ind = j
 
 print(f"final population is:")
-map_chromosome_to_human_readable_text(population[ind])
+map_chromosome_to_human_readable_text(population[best_fitness_so_far])
