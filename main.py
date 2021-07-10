@@ -1,10 +1,11 @@
 from random import randint, choices
-from math import floor, ceil
+from math import ceil
+import time
 
 # Define variables
 NUMBER_OF_SECTIONS = 6
 NUMBER_OF_WORK_DAYS = 7
-SECTION_TO_SHIFT = {1: 3, 2: 3, 3: 3, 4: 2, 5: 2, 6: 3}
+SECTION_TO_SHIFT = {1: 3, 2: 3, 3: 3, 4: 3, 5: 3, 6: 3}
 NUMBER_OF_GENES = 3 * list(SECTION_TO_SHIFT.values()).count(3) * NUMBER_OF_WORK_DAYS + 2 * list(
     SECTION_TO_SHIFT.values()).count(2) * NUMBER_OF_WORK_DAYS
 NUMBER_OF_POPULATION = NUMBER_OF_GENES
@@ -43,7 +44,6 @@ def map_chromosome_to_human_readable_text(chromosome: list) -> None:
                 print(f"{sub_sec[i - 1][j]}", end=" ")
             print()
     return None
-
 
 def chunk_it(seq: list, num: int) -> list:
     avg = len(seq) / float(num)
@@ -91,14 +91,10 @@ def fitness(x: list) -> float:
     return score
 
 
-def main():
-    minimum_possible_score = 0
+def main() -> None:
+    minimum_possible_score = NUMBER_OF_SECTIONS
     max_number_generation = 10_000
-    mutation_rate = 0.01
-
-    # Find minimum possible fitness value
-    for i in range(1, NUMBER_OF_SECTIONS + 1):
-        minimum_possible_score += (SECTION_TO_SHIFT.get(i) * NUMBER_OF_WORK_DAYS) % SECTION_TO_NUMBER_OF_NURSES.get(i)
+    mutation_rate = 0.1
 
     for i in range(max_number_generation):
         pop_fitness = {}
@@ -110,7 +106,7 @@ def main():
             pop_fitness[j] = fitness(population[j])
             if list(pop_fitness.values())[-1] == minimum_possible_score:  # Is termination criteria satisfied?
                 map_chromosome_to_human_readable_text(population[j])
-                exit(0)
+                return None
 
         # Select
         best_fitness = sorted(pop_fitness, key=pop_fitness.get, reverse=True)[-NUMBER_OF_POPULATION // 2:]
@@ -133,12 +129,29 @@ def main():
         for _ in range(ceil(mutation_rate * NUMBER_OF_POPULATION)):
             rand_pop_idx1 = randint(0, len(childs) - 1)
             rand_pop_idx2 = randint(0, len(childs) - 1)
-            rand_gene_idx1 = randint(0, NUMBER_OF_GENES - 1)
-            rand_gene_idx2 = randint(0, NUMBER_OF_GENES - 1)
+            rand_sec_idx = randint(1, NUMBER_OF_SECTIONS)
+            tmp = chunk_chromosome(population[0])
+            x = 0
+            for i in range(rand_sec_idx-1):
+                x += len(tmp[i])
+            y = x + (SECTION_TO_SHIFT.get(rand_sec_idx) * NUMBER_OF_WORK_DAYS) - 1
+            rand_gene_idx1 = randint(x, y)
+            rand_gene_idx2 = randint(x, y)
             childs[rand_pop_idx1][rand_gene_idx1], childs[rand_pop_idx2][rand_gene_idx2] = childs[rand_pop_idx2][
                                                                                                rand_gene_idx2], \
                                                                                            childs[rand_pop_idx1][
                                                                                                rand_gene_idx1]
+
+        # # Calculate fitness value for childs
+        # child_fitness = {}
+        # for j in range(len(childs)):
+        #     child_fitness[j] = fitness(childs[j])
+        #
+        # for p in range(NUMBER_OF_POPULATION):
+        #     for c in range(len(childs)):
+        #         if child_fitness.get(c) < pop_fitness.get(p):
+        #             population[p] = childs[c]
+        #             break
 
         # Replace parents with low fitness value with new children's
         not_chosen_parents = list(set(pop_fitness.keys()).difference(best_fitness))
@@ -147,4 +160,7 @@ def main():
 
 
 if __name__ == "__main__":
+    started = time.time()
     main()
+    elapsed = time.time()
+    print('Time taken:', elapsed - started)
