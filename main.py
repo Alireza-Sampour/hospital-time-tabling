@@ -2,15 +2,15 @@ from random import randint, choices
 from math import floor, ceil
 
 # Define variables
-NUMBER_OF_SECTIONS = 3
+NUMBER_OF_SECTIONS = 6
 NUMBER_OF_WORK_DAYS = 7
-SECTION_TO_SHIFT = {1: 3, 2: 3, 3: 3}
+SECTION_TO_SHIFT = {1: 3, 2: 3, 3: 3, 4: 2, 5: 2, 6: 3}
 NUMBER_OF_GENES = 3 * list(SECTION_TO_SHIFT.values()).count(3) * NUMBER_OF_WORK_DAYS + 2 * list(
     SECTION_TO_SHIFT.values()).count(2) * NUMBER_OF_WORK_DAYS
 NUMBER_OF_POPULATION = NUMBER_OF_GENES
 SELECTION_PART = (NUMBER_OF_GENES - 1) // 2 + 20
-NURSES = [1, 2, 3, 4, 5, 6, 7, 8, 9]
-NURSE_TO_SECTION = {1: 1, 2: 1, 3: 1, 4: 2, 5: 2, 6: 2, 7: 3, 8: 3, 9: 3}
+NURSES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30]
+NURSE_TO_SECTION = {1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 2, 7: 2, 8: 2, 9: 2, 10: 2, 11: 3, 12: 3, 13: 3, 14: 3, 15: 3, 16: 4, 17: 4, 18: 4, 19: 4, 20: 4, 21: 5, 22: 5, 23: 5, 24: 5, 25: 5, 26: 6, 27: 6, 28: 6, 29: 6, 30: 6}
 SECTION_TO_NUMBER_OF_NURSES = {key: sum(x == key for x in NURSE_TO_SECTION.values()) for key in
                                range(1, NUMBER_OF_SECTIONS + 1)}
 
@@ -92,7 +92,6 @@ def fitness(x: list) -> float:
 
 
 def main():
-    alpha = 0.5
     minimum_possible_score = 0
     max_number_generation = 10_000
     mutation_rate = 0.01
@@ -101,8 +100,6 @@ def main():
     for i in range(1, NUMBER_OF_SECTIONS + 1):
         minimum_possible_score += (SECTION_TO_SHIFT.get(i) * NUMBER_OF_WORK_DAYS) % SECTION_TO_NUMBER_OF_NURSES.get(i)
 
-    # print(minimum_possible_score)
-    # exit(0)
     for i in range(max_number_generation):
         pop_fitness = {}
 
@@ -125,27 +122,12 @@ def main():
         # Crossover
         childs = []
         for index, (idx1, idx2) in enumerate(zip(best_fitness[0::2], best_fitness[1::2]), start=1):
-            if index % 2 == 0:
-                childs.append(population[idx1][:SELECTION_PART])
-                childs.append(population[idx2][:SELECTION_PART])
-                t = [floor(alpha * (population[idx1][i] + population[idx2][i])) for i in
-                     range(SELECTION_PART, NUMBER_OF_GENES)]
-                childs[len(childs) - 2] += t
-                childs[len(childs) - 1] += t
-            else:
-                y = NUMBER_OF_GENES - SELECTION_PART
-                childs.append(population[idx1][y:])
-                childs.append(population[idx2][y:])
-                t = [floor(alpha * (population[idx1][i] + population[idx2][i])) for i in range(0, y)]
-                childs[len(childs) - 2] += t
-                childs[len(childs) - 1] += t
+            childs.append(population[idx1][:SELECTION_PART] + population[idx2][SELECTION_PART:])
+            childs.append(population[idx2][:SELECTION_PART] + population[idx1][SELECTION_PART:])
 
         # If number of parents is even number must add last parent separately
         if NUMBER_OF_POPULATION % 2 == 0:
-            childs.append(population[best_fitness[-1]][:SELECTION_PART])
-            t = [floor(alpha * (population[best_fitness[-1]][i] + population[best_fitness[0]][i])) for i in
-                 range(SELECTION_PART, NUMBER_OF_GENES)]
-            childs[len(childs) - 1] += t
+            childs.append(population[best_fitness[-1]][:SELECTION_PART] + population[best_fitness[-2]][SELECTION_PART:])
 
         # Mutation
         for _ in range(ceil(mutation_rate * NUMBER_OF_POPULATION)):
