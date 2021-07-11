@@ -13,7 +13,7 @@ SELECTION_PART = (NUMBER_OF_GENES - 1) // 2 + 20
 NURSE_TO_SECTION = {1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 2, 7: 2, 8: 2, 9: 2, 10: 2, 11: 3, 12: 3, 13: 3, 14: 3, 15: 3, 16: 4, 17: 4, 18: 4, 19: 4, 20: 4, 21: 5, 22: 5, 23: 5, 24: 5, 25: 5, 26: 6, 27: 6, 28: 6, 29: 6, 30: 6}
 SECTION_TO_NUMBER_OF_NURSES = {key: sum(x == key for x in NURSE_TO_SECTION.values()) for key in
                                range(1, NUMBER_OF_SECTIONS + 1)}
-preference = {1: {'shifts': [1, 3], 'days': [1]}, 2: {'shifts': [2, 3], 'days': [4]}}
+preferences = {1: {'shifts': [1, 3], 'days': [1]}, 2: {'shifts': [2, 3], 'days': [4]}}
 
 
 def create_population() -> list:
@@ -83,12 +83,12 @@ def fitness(x: list) -> float:
             if i != len(sec) - 1 and sec[i] == sec[i + 1]:  # Check there is duplicated continuous nurse in section?
                 score += 5
 
-        if set(range(max(sec) - SECTION_TO_NUMBER_OF_NURSES.get(idx), max(sec)+1)).issuperset(preference.keys()):  # Check if nurses in section idxth has preferences?
-            for t in (set(range(max(sec) - SECTION_TO_NUMBER_OF_NURSES.get(idx), max(sec)+1)).intersection(preference.keys())):
-                for d in preference.get(t).get('days'):  # Check nurse is on a preferred day?
+        if set(range(max(sec) - SECTION_TO_NUMBER_OF_NURSES.get(idx), max(sec)+1)).issuperset(preferences.keys()):  # Check if nurses in section idxth has preferences?
+            for t in (set(range(max(sec) - SECTION_TO_NUMBER_OF_NURSES.get(idx), max(sec)+1)).intersection(preferences.keys())):
+                for d in preferences.get(t).get('days'):  # Check nurse is on a preferred day?
                     if t not in sec[(d-1) * SECTION_TO_SHIFT.get(idx):((d-1) * SECTION_TO_SHIFT.get(idx)) + SECTION_TO_SHIFT.get(idx)]:
                         score += 1
-                for s in preference.get(t).get('shifts'):  # Check nurse is on a preferred shift?
+                for s in preferences.get(t).get('shifts'):  # Check nurse is on a preferred shift?
                     if sec[(s-1)::SECTION_TO_SHIFT.get(idx)].count(t) < ((len(sec) // SECTION_TO_NUMBER_OF_NURSES.get(idx)) // 2) + 1:
                         score += 1
 
@@ -114,7 +114,7 @@ def main() -> None:
 
     # Find maximum possible score
     maximum_possible_score += minimum_possible_score
-    for v in preference.values():
+    for v in preferences.values():
         for r in v.values():
             maximum_possible_score += len(r)
 
