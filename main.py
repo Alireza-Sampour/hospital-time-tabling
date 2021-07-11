@@ -3,17 +3,17 @@ from math import ceil
 import time
 
 # Define variables
-NUMBER_OF_SECTIONS = 6
 NUMBER_OF_WORK_DAYS = 7
 SECTION_TO_SHIFT = {1: 3, 2: 3, 3: 3, 4: 3, 5: 3, 6: 3}
+NUMBER_OF_SECTIONS = len(SECTION_TO_SHIFT)
 NUMBER_OF_GENES = 3 * list(SECTION_TO_SHIFT.values()).count(3) * NUMBER_OF_WORK_DAYS + 2 * list(
     SECTION_TO_SHIFT.values()).count(2) * NUMBER_OF_WORK_DAYS
 NUMBER_OF_POPULATION = NUMBER_OF_GENES
 SELECTION_PART = (NUMBER_OF_GENES - 1) // 2 + 20
-NURSES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30]
 NURSE_TO_SECTION = {1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 2, 7: 2, 8: 2, 9: 2, 10: 2, 11: 3, 12: 3, 13: 3, 14: 3, 15: 3, 16: 4, 17: 4, 18: 4, 19: 4, 20: 4, 21: 5, 22: 5, 23: 5, 24: 5, 25: 5, 26: 6, 27: 6, 28: 6, 29: 6, 30: 6}
 SECTION_TO_NUMBER_OF_NURSES = {key: sum(x == key for x in NURSE_TO_SECTION.values()) for key in
                                range(1, NUMBER_OF_SECTIONS + 1)}
+preference = {1: {'shifts': [1, 3], 'days': [1]}, 2: {'shifts': [2, 3], 'days': [4]}}
 
 
 def create_population() -> list:
@@ -45,6 +45,7 @@ def map_chromosome_to_human_readable_text(chromosome: list) -> None:
             print()
     return None
 
+
 def chunk_it(seq: list, num: int) -> list:
     avg = len(seq) / float(num)
     out = []
@@ -71,7 +72,7 @@ def chunk_chromosome(seq: list) -> list:
 def fitness(x: list) -> float:
     score = 0
     sections = chunk_chromosome(x)
-    if not set(NURSES).issubset(x):  # Is all nurses in chromosome?
+    if not set(range(1, len(NURSE_TO_SECTION) + 1)).issubset(x):  # Is all nurses in chromosome?
         return 999
 
     for idx, sec in enumerate(sections, start=1):
@@ -81,6 +82,15 @@ def fitness(x: list) -> float:
                 return 999
             if i != len(sec) - 1 and sec[i] == sec[i + 1]:  # Check there is duplicated continuous nurse in section?
                 score += 5
+
+        if set(range(max(sec) - SECTION_TO_NUMBER_OF_NURSES.get(idx), max(sec)+1)).issuperset(preference.keys()):  # Check if nurses in section idxth has preferences?
+            for t in (set(range(max(sec) - SECTION_TO_NUMBER_OF_NURSES.get(idx), max(sec)+1)).intersection(preference.keys())):
+                for d in preference.get(t).get('days'):  # Check nurse is on a preferred day?
+                    if t not in sec[(d-1) * SECTION_TO_SHIFT.get(idx):((d-1) * SECTION_TO_SHIFT.get(idx)) + SECTION_TO_SHIFT.get(idx)]:
+                        score += 1
+                for s in preference.get(t).get('shifts'):  # Check nurse is on a preferred shift?
+                    if sec[(s-1)::SECTION_TO_SHIFT.get(idx)].count(t) < ((len(sec) // SECTION_TO_NUMBER_OF_NURSES.get(idx)) // 2) + 1:
+                        score += 1
 
         nurse_count_in_section = [sec.count(nurse) for nurse in set(sec)]
         score += max(nurse_count_in_section) - min(
@@ -92,28 +102,52 @@ def fitness(x: list) -> float:
 
 
 def main() -> None:
-    minimum_possible_score = NUMBER_OF_SECTIONS
+    minimum_possible_score = 0
+    maximum_possible_score = 0
     max_number_generation = 10_000
-    mutation_rate = 0.1
+    mutation_rate = 0.15
+    answer = {'is_find': False, 'generation': -1, 'population': [], 'fitness': 999}
+
+    # Find minimum possible score
+    for k in range(1, NUMBER_OF_SECTIONS+1):
+        minimum_possible_score += 0 if (SECTION_TO_SHIFT.get(k) * NUMBER_OF_WORK_DAYS) % SECTION_TO_NUMBER_OF_NURSES.get(k) == 0 else 1
+
+    # Find maximum possible score
+    maximum_possible_score += minimum_possible_score
+    for v in preference.values():
+        for r in v.values():
+            maximum_possible_score += len(r)
 
     for i in range(max_number_generation):
         pop_fitness = {}
+
+        if answer.get('is_find') and i - answer.get('generation') > 250:
+            map_chromosome_to_human_readable_text(answer.get('population'))
+            return None
 
         print(f"Gen {i + 1}")
 
         # Calculate fitness value
         for j in range(NUMBER_OF_POPULATION):
             pop_fitness[j] = fitness(population[j])
-            if list(pop_fitness.values())[-1] == minimum_possible_score:  # Is termination criteria satisfied?
+
+            # Is termination criteria satisfied?
+            if list(pop_fitness.values())[-1] == minimum_possible_score:
                 map_chromosome_to_human_readable_text(population[j])
                 return None
+
+            elif list(pop_fitness.values())[-1] < maximum_possible_score and list(pop_fitness.values())[-1] < answer.get('fitness'):
+                answer['is_find'] = True
+                answer['generation'] = i
+                answer['population'] = population[j]
+                answer['fitness'] = list(pop_fitness.values())[-1]
 
         # Select
         best_fitness = sorted(pop_fitness, key=pop_fitness.get, reverse=True)[-NUMBER_OF_POPULATION // 2:]
 
         if i + 1 == max_number_generation:
-            print(f"final population is with fitness {pop_fitness.get(best_fitness[-1])}:")
             map_chromosome_to_human_readable_text(population[best_fitness[-1]])
+            return None
 
         # Crossover
         childs = []
@@ -141,17 +175,6 @@ def main() -> None:
                                                                                                rand_gene_idx2], \
                                                                                            childs[rand_pop_idx1][
                                                                                                rand_gene_idx1]
-
-        # # Calculate fitness value for childs
-        # child_fitness = {}
-        # for j in range(len(childs)):
-        #     child_fitness[j] = fitness(childs[j])
-        #
-        # for p in range(NUMBER_OF_POPULATION):
-        #     for c in range(len(childs)):
-        #         if child_fitness.get(c) < pop_fitness.get(p):
-        #             population[p] = childs[c]
-        #             break
 
         # Replace parents with low fitness value with new children's
         not_chosen_parents = list(set(pop_fitness.keys()).difference(best_fitness))
