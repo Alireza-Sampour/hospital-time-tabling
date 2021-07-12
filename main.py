@@ -1,5 +1,7 @@
 from random import randint, choices
 from math import ceil
+
+import openpyxl as xl
 import time
 
 # Define variables
@@ -21,6 +23,7 @@ def create_population() -> list:
     for i in range(NUMBER_OF_POPULATION):
         last_n_id = 1
         pop.append([])
+
         for se in range(1, NUMBER_OF_SECTIONS + 1):
             pop[i].extend(choices(range(last_n_id, SECTION_TO_NUMBER_OF_NURSES.get(se) + last_n_id),
                                   k=SECTION_TO_SHIFT.get(se) * NUMBER_OF_WORK_DAYS))
@@ -33,16 +36,27 @@ population = create_population()
 
 
 def map_chromosome_to_human_readable_text(chromosome: list) -> None:
+    base_path = "/home/alireza/Desktop/"
+    file_path = base_path + "template.xlsx"
+    wb = xl.load_workbook(file_path)
+    excel_shifts = {0: 'B', 1: 'C', 2: 'D'}
+
     sections = chunk_chromosome(chromosome)
-    days = {1: "Saturday", 2: "Sunday", 3: "Monday", 4: "Tuesday", 5: "Wednesday", 6: "Thursday", 7: "Friday"}
+
     for idx, sec in enumerate(sections, start=1):
-        print(f"---------------section {idx}--------------------")
+        target = wb.copy_worksheet(wb.active) if idx != 1 else wb.active
+        target.title = f"Section {idx}"
+        target['A1'] = f"Section #{idx}"
+
         for i in range(1, NUMBER_OF_WORK_DAYS + 1):
             sub_sec = chunk_it(sec, NUMBER_OF_WORK_DAYS)
-            print(f"{days.get(i)}: ", end="")
+
+            if SECTION_TO_SHIFT.get(idx) == 2:
+                target.delete_cols(4)
             for j in range(SECTION_TO_SHIFT.get(idx)):
-                print(f"{sub_sec[i - 1][j]}", end=" ")
-            print()
+                target[f'{excel_shifts.get(j)}{i + 1}'] = sub_sec[i - 1][j]
+
+    wb.save(base_path + "output.xlsx")
     return None
 
 
@@ -121,7 +135,7 @@ def main() -> None:
     for i in range(max_number_generation):
         pop_fitness = {}
 
-        if answer.get('is_find') and i - answer.get('generation') > 250:
+        if answer.get('is_find') and i - answer.get('generation') > 300:
             map_chromosome_to_human_readable_text(answer.get('population'))
             return None
 
