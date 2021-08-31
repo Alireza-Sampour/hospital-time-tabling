@@ -13,7 +13,7 @@ nurse_to_section = {}
 file_name = "template.xlsx"
 
 
-# Read data from template.xlsx file
+# Read data from file_name
 def read_data():
     base_path = os.getcwd() + "/"
     file_path = base_path + file_name
