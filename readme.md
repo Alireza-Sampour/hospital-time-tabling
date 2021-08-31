@@ -16,3 +16,19 @@ Hospital timetabling implementation with genetic algorithm
 3. Run main.py: `python3 main.py`
 
  output will save in output.xlsx file.
+ 
+ 
+# Demo
+
+### Input:
+<p align="center">
+  <img src="https://github.com/Alireza-Sampour/hospital-time-tabling/blob/master/screenshots/input.png" />
+</p>
+
+### Output:
+<p align="center">
+  <img src="https://github.com/Alireza-Sampour/hospital-time-tabling/blob/master/screenshots/output1.png" />
+  <img src="https://github.com/Alireza-Sampour/hospital-time-tabling/blob/master/screenshots/output2.png" />
+  <img src="https://github.com/Alireza-Sampour/hospital-time-tabling/blob/master/screenshots/output3.png" />
+  <img src="https://github.com/Alireza-Sampour/hospital-time-tabling/blob/master/screenshots/output4.png" />
+</p>
